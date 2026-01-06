@@ -2,8 +2,8 @@
 __pycache__/
 *.py[cod]
 # Build artifacts
-build/
-dist/
+build/*
+dist/*
 
 # Virtual environments
 .venv/

@@ -1,6 +1,9 @@
 # Python caches
 __pycache__/
 *.py[cod]
+# Build artifacts
+build/
+dist/
 
 # Virtual environments
 .venv/

@@ -1,0 +1,24 @@
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# VS Code and tooling
+.vscode/
+*.code-workspace
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Local data files
+*.log
+*.sqlite3
+
+# App-specific
+*.json
+.qodo

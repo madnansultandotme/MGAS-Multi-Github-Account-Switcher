@@ -114,10 +114,11 @@ class RepoBootstrapper:
         check = hidden_run(["git", "-C", folder, "rev-parse", "--is-inside-work-tree"], capture_output=True)
         if check.returncode != 0:
             hidden_run(["git", "-C", folder, "init"], check=True)
-
-        remote_check = hidden_run(["git", "-C", folder, "remote", "get-url", "origin"], capture_output=True)
-        if remote_check.returncode == 0:
-            raise RuntimeError("This repository already has a remote named 'origin'.")
+        else:
+            # If it's already a git repo, check if origin remote exists
+            remote_check = hidden_run(["git", "-C", folder, "remote", "get-url", "origin"], capture_output=True)
+            if remote_check.returncode == 0:
+                raise RuntimeError("This repository already has a remote named 'origin'. Please remove it first or choose a different folder.")
 
     def _configure_authorship(self, folder: str, account: Account) -> None:
         hidden_run(["git", "-C", folder, "config", "user.name", account.name], check=True)

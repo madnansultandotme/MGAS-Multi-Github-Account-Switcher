@@ -83,7 +83,7 @@ README.md
 - UI preferences (currently just the default initial commit message) live in `~/.github_account_switcher_settings.json`.
 
 ## Maintainer & Contact
-- **Email:** info.adnansultan@gmail
+- **Email:** info.adnansultan@gmail.com
 - **GitHub:** [madnansultandotme](https://github.com/madnansultandotme)
 - **LinkedIn:** [dev-madnansultan](https://www.linkedin.com/in/dev-madnansultan)
 

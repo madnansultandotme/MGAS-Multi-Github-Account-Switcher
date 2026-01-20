@@ -91,18 +91,20 @@ class AccountSwitcherApp:
         scrollbar = ttk.Scrollbar(table_frame, orient="vertical")
         self.tree = ttk.Treeview(
             table_frame,
-            columns=("Label", "Username", "Name", "Email"),
+            columns=("Status", "Label", "Username", "Name", "Email"),
             show="headings",
             yscrollcommand=scrollbar.set,
         )
+        self.tree.heading("Status", text="Active")
         self.tree.heading("Label", text="Label")
         self.tree.heading("Username", text="GitHub Username")
         self.tree.heading("Name", text="Full Name")
         self.tree.heading("Email", text="Email")
-        self.tree.column("Label", width=140, anchor="w", stretch=True)
-        self.tree.column("Username", width=180, anchor="w", stretch=True)
-        self.tree.column("Name", width=200, anchor="w", stretch=True)
-        self.tree.column("Email", width=240, anchor="w", stretch=True)
+        self.tree.column("Status", width=60, anchor="center", stretch=False)
+        self.tree.column("Label", width=120, anchor="w", stretch=True)
+        self.tree.column("Username", width=160, anchor="w", stretch=True)
+        self.tree.column("Name", width=180, anchor="w", stretch=True)
+        self.tree.column("Email", width=220, anchor="w", stretch=True)
 
         self.tree.grid(row=0, column=0, sticky="nsew")
         scrollbar.config(command=self.tree.yview)
@@ -192,15 +194,34 @@ class AccountSwitcherApp:
     def refresh_list(self):
         for row in self.tree.get_children():
             self.tree.delete(row)
+        
+        # Get the active username
+        active_username = self._get_active_username()
+        
         for account in self.account_store.all():
-            self.tree.insert("", "end", iid=account.label, values=(account.label, account.username, account.name, account.email))
+            # Mark active account with a checkmark
+            status = "✓" if account.username == active_username else ""
+            self.tree.insert("", "end", iid=account.label, values=(status, account.label, account.username, account.name, account.email))
 
     def update_status(self):
         try:
             status_text = self.gh_cli.auth_status()
             self.status_label.configure(text=status_text)
-        except (FileNotFoundError, subprocess.CalledProcessError):
-            self.status_label.configure(text="GitHub CLI not available or no active account")
+        except FileNotFoundError:
+            self.status_label.configure(text="GitHub CLI not installed")
+        except Exception as e:
+            self.status_label.configure(text=f"Error checking status: {str(e)}")
+        
+        # Refresh the list to update active indicators
+        self.refresh_list()
+    
+    def _get_active_username(self) -> str | None:
+        """Get the currently active GitHub username from gh CLI."""
+        try:
+            result = self.gh_cli.get_active_user()
+            return result
+        except Exception:
+            return None
 
     def _selected_account(self) -> Account | None:
         selection = self.tree.selection()
@@ -285,17 +306,10 @@ class AccountSwitcherApp:
         if not folder:
             return
 
-        repo_dialog = ctk.CTkInputDialog(title="New GitHub Repo", text="Enter repository name:")
-        repo_name = repo_dialog.get_input() if repo_dialog else None
-        if not repo_name:
-            messagebox.showwarning("Cancelled", "Repository creation cancelled.")
-            return
-        repo_name = repo_name.strip()
-        if not repo_name:
-            messagebox.showerror("Error", "Repository name cannot be empty.")
-            return
-
-        private = messagebox.askyesno("Visibility", "Make repository private?")
+        # Automatically use the folder name as the repo name
+        repo_name = Path(folder).name
+        
+        private = messagebox.askyesno("Visibility", f"Make repository '{repo_name}' private?")
         commit_message = self.settings.get_commit_message()
 
         try:

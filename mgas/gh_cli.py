@@ -79,15 +79,59 @@ class GitHubCLI:
 
     def auth_status(self) -> str:
         gh = self.ensure()
-        result = hidden_run([gh, "auth", "status"], capture_output=True, text=True, check=True)
-        for line in result.stdout.splitlines():
-            if "Active account" in line:
-                return line.strip()
-        return result.stdout.splitlines()[0] if result.stdout else "No active account"
+        result = hidden_run([gh, "auth", "status"], capture_output=True, text=True)
+        
+        # Parse the output to find active account
+        output = result.stdout + result.stderr
+        lines = output.splitlines()
+        
+        active_username = None
+        for i, line in enumerate(lines):
+            if "Logged in to github.com account" in line and i + 1 < len(lines):
+                # Check next line for active status
+                next_line = lines[i + 1]
+                if "Active account: true" in next_line:
+                    # Extract username from current line
+                    parts = line.split("account")
+                    if len(parts) > 1:
+                        username = parts[1].strip().split()[0]
+                        active_username = username
+                        break
+        
+        if active_username:
+            return f"Current Active: {active_username}"
+        else:
+            return "GitHub CLI available - No active account"
+
+    def get_active_user(self) -> str | None:
+        """Get the currently active GitHub username."""
+        try:
+            gh = self.ensure()
+            result = hidden_run([gh, "auth", "status"], capture_output=True, text=True)
+            
+            # Parse the output to find active account
+            output = result.stdout + result.stderr
+            lines = output.splitlines()
+            
+            for i, line in enumerate(lines):
+                if "Logged in to github.com account" in line and i + 1 < len(lines):
+                    # Check next line for active status
+                    next_line = lines[i + 1]
+                    if "Active account: true" in next_line:
+                        # Extract username from current line
+                        parts = line.split("account")
+                        if len(parts) > 1:
+                            username = parts[1].strip().split()[0]
+                            return username
+            return None
+        except Exception:
+            return None
 
     def repo_create(self, folder: str, repo_name: str, private: bool) -> None:
         gh = self.ensure()
         visibility_flag = "--private" if private else "--public"
+        
+        # First create the repo without pushing
         hidden_run(
             [
                 gh,
@@ -99,11 +143,12 @@ class GitHubCLI:
                 folder,
                 "--remote",
                 "origin",
-                "--push",
-                "--confirm",
             ],
             check=True,
         )
+        
+        # Then push manually to ensure branch exists
+        hidden_run(["git", "-C", folder, "push", "-u", "origin", "main"], check=True)
 
 
 class RepoBootstrapper:
@@ -134,6 +179,16 @@ class RepoBootstrapper:
         combined = (commit_proc.stdout or "") + (commit_proc.stderr or "")
         if commit_proc.returncode != 0 and "nothing to commit" not in combined.lower():
             raise subprocess.CalledProcessError(commit_proc.returncode, commit_proc.args, commit_proc.stdout, commit_proc.stderr)
+        
+        # Ensure we're on a branch (rename master to main if needed)
+        branch_check = hidden_run(["git", "-C", folder, "branch", "--show-current"], capture_output=True, text=True)
+        current_branch = branch_check.stdout.strip()
+        if not current_branch:
+            # No branch yet, create main branch
+            hidden_run(["git", "-C", folder, "checkout", "-b", "main"], check=True)
+        elif current_branch == "master":
+            # Rename master to main
+            hidden_run(["git", "-C", folder, "branch", "-M", "main"], check=True)
 
     def initialize_and_push(self, folder: str, account: Account, repo_name: str, private: bool, commit_message: str) -> None:
         self.gh_cli.switch_user(account.username)

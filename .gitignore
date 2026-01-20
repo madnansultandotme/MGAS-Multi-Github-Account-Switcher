@@ -2,9 +2,9 @@
 __pycache__/
 *.py[cod]
 # Build artifacts
-build/*
+build/MGAS-Desktop
 dist/*
-build
+build/*
 dist
 # Virtual environments
 .venv/
